@@ -6,20 +6,84 @@ output:
 ---
 
 
-## Loading and preprocessing the data
+```{r}
+
+library(knitr)
+library(timeDate)
+library(lattice)
+
+```
+
+# Assignment 1 - reproducible research
 
 
+## Loading and processing the data
+
+```{r}
+
+data=read.csv("../data/activity.csv")
+
+```
 
 ## What is mean total number of steps taken per day?
 
+```{r,echo=TRUE}
 
+y=tapply(data$steps,INDEX = data$date,FUN = sum,na.rm=TRUE)
+hist(y,xlab="Number of steps",ylab="Days",main="Histogram of total number of steps taken per day")
+mean(y,na.rm=TRUE)
+median(y,na.rm=TRUE)
+```
 
 ## What is the average daily activity pattern?
 
+```{r,echo=TRUE}
 
+mean_steps_per_interval=tapply(data$steps,INDEX = data$interval,FUN = mean,na.rm=TRUE)
+df=data.frame(interval=as.numeric(names(mean_steps_per_interval)),steps=mean_steps_per_interval)
+plot(df,type='l',xlab="Time interval (5min)",ylab="Average number of steps taken (averaged across all days)",main="Histogram of number of steps taken per day")
+
+print(paste("5 minute interval with maximum number of steps =",df[ df$steps==max(df$steps),]$interval))
+
+
+
+```
 
 ## Imputing missing values
+Strategy for imputing missing data: Use the mean of the 5-minute interval across the dataset to fill in NA values into a new dataset
 
+```{r,echo=TRUE}
 
+print(paste("Number of missing values=",sum(is.na(data$steps))))
+
+datafilled=data
+for (i in seq_along(data$date)) {
+    if (is.na(data$steps[[i]])) { 
+      datafilled$steps[[i]]<-mean( data[ data$interval==data$interval[[i]], ]$steps,na.rm=TRUE) }
+}
+
+yfill=tapply(datafilled$steps,INDEX = datafilled$date,FUN = sum)
+hist(yfill,xlab="Number of steps",ylab="Days",main="Histogram of number of steps taken per day after missing values imputed")
+mean(yfill)
+median(yfill)
+
+```
+The mean has adjusted upwards.
+The median has changed as well, and happens to be the same as the mean. Since days with NA steps measurement were filled in with mean interval values, this value might be less useful.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+We first get the means of number of steps by weekday and weekend. Plot two graphs for comparison as shown from sample.
+
+```{r,echo=TRUE}
+
+datafilled$isweekday=isWeekday( as.POSIXct( datafilled$date ) )
+datafilled$isweekday= gsub(pattern = FALSE, replacement = "weekend",datafilled$isweekday)
+datafilled$isweekday= gsub(pattern = TRUE, replacement = "weekday",datafilled$isweekday)
+
+plotdata=aggregate(x = datafilled["steps"],by=datafilled[,c("interval","isweekday")],FUN=mean)
+
+xyplot(steps~interval|isweekday,data = plotdata,type='l',layout=c(1,2),xlab="Time interval (5min)",ylab="Average number of steps taken")
+
+```
+
